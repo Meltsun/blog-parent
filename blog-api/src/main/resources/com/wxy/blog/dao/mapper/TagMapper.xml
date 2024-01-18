@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!--MyBatis配置文件-->
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Config 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.wxy.blog.dao.mapper.TagMapper">
+    <select id="getTagsByArticleId" parameterType="long" resultType="com.wxy.blog.dao.pojo.Tag">
+        select id, avatar, tag_name as tagName
+        from ms_tag
+        where id in
+        (select ms_article_tag.tag_id from ms_article_tag where article_id=#{articleId})
+    </select>
+    <select id="getHotTags" resultType="Long">
+        SELECT tag_id
+        FROM ms_article_tag
+        GROUP BY tag_id
+        ORDER BY COUNT(*) DESC
+        LIMIT #{limit}
+    </select>
+</mapper>
