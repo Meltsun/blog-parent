@@ -9,8 +9,8 @@ import java.util.List;
 public interface ArticleService {
     /**
      * 分页查询
-     * @param pageParams
-     * @return
+     * @param pageParams 分页参数
+     * @return 文章列表
      */
     List<ArticleVo> listArticle(PageParams pageParams);
 

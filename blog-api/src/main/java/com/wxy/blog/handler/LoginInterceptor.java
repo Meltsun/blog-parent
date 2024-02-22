@@ -3,6 +3,7 @@ package com.wxy.blog.handler;
 import com.alibaba.fastjson.JSON;
 import com.wxy.blog.dao.pojo.SysUser;
 import com.wxy.blog.service.LoginService;
+import com.wxy.blog.util.UserThreadLocal;
 import com.wxy.blog.vo.ErrorCode;
 import com.wxy.blog.vo.Result;
 import lombok.extern.slf4j.Slf4j;
@@ -47,11 +48,17 @@ public class LoginInterceptor implements HandlerInterceptor {
             handleResponse(Result.fail(ErrorCode.NO_LOGIN),response);
             return false;
         }
+        sysUser.ifPresent(UserThreadLocal::put);
         return true;
     }
 
     void handleResponse(Result result,HttpServletResponse response) throws IOException {
         response.setContentType("application/json;charset=utf-8");
         response.getWriter().print(JSON.toJSONString(result));
+    }
+
+    @Override
+    public void afterCompletion(HttpServletRequest request, HttpServletResponse response, Object handler, Exception ex) throws Exception {
+        UserThreadLocal.remove();
     }
 }

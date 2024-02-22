@@ -20,7 +20,7 @@ public class Result {
     }
 
     public static Result fail(ErrorCode code,String msg) {
-        return fail(code.getCode(), code.getMsg());
+        return fail(code.getCode(), msg);
     }
 
     public static Result fail(ErrorCode code){

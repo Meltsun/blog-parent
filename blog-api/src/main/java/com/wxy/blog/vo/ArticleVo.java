@@ -3,9 +3,11 @@ package com.wxy.blog.vo;
 //import com.wxy.blog.dao.pojo.ArticleBody;
 //import com.wxy.blog.dao.pojo.Category;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 import java.util.List;
 
+@EqualsAndHashCode(callSuper = true)
 @Data
 public class ArticleVo extends ArticleTitleVo {
 
