@@ -2,13 +2,16 @@ package com.wxy.blog.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.wxy.blog.dao.mapper.ArticleBodyMapper;
 import com.wxy.blog.dao.mapper.ArticleMapper;
 import com.wxy.blog.dao.pojo.Article;
+import com.wxy.blog.dao.pojo.ArticleBody;
 import com.wxy.blog.dao.pojo.SysUser;
 import com.wxy.blog.service.ArticleService;
 import com.wxy.blog.service.CategoryService;
 import com.wxy.blog.service.SysUserService;
 import com.wxy.blog.service.TagService;
+import com.wxy.blog.vo.ArticleBodyVo;
 import com.wxy.blog.vo.ArticleVo;
 import com.wxy.blog.vo.ArticleTitleVo;
 import com.wxy.blog.vo.params.PageParams;
@@ -33,6 +36,9 @@ class ArticleServiceImpl implements ArticleService {
 
     @Autowired
     private CategoryService categoryService;
+
+    @Autowired
+    private ArticleBodyMapper articleBodyMapper;
 
     @Override
     public List<ArticleVo> listArticle(PageParams pageParams) {
@@ -67,7 +73,7 @@ class ArticleServiceImpl implements ArticleService {
     public List<ArticleTitleVo> listNewArticle(int limit) {
         LambdaQueryWrapper<Article> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper
-                .select(Article::getId,Article::getTitle)
+                .select(Article::getId, Article::getTitle)
                 .orderByDesc(Article::getCreateDate)
                 .last("LIMIT " + limit);
         List<Article> articles = articleMapper.selectList(queryWrapper);
@@ -89,14 +95,26 @@ class ArticleServiceImpl implements ArticleService {
                         Article::getCreateDate,
                         Article::getAuthorId,
                         Article::getCategoryId
-                ).eq(Article::getId,id);
-        Article artical = articleMapper.selectOne(queryWrapper);
-        BeanUtils.copyProperties(artical,articleVo);
-        articleVo.setAuthor(sysUserService.getUserById(artical.getAuthorId()).map(SysUser::getNickname).orElse(""));
+                ).eq(Article::getId, id);
+        Article article = articleMapper.selectOne(queryWrapper);
+        BeanUtils.copyProperties(article, articleVo);
+        articleVo.setAuthor(sysUserService.getUserById(article.getAuthorId()).map(SysUser::getNickname).orElse(""));
         articleVo.setTags(tagService.getTagsByArticleId(id));
-        articleVo.setCategory(categoryService.findCategoryById(artical.getCategoryId()));
+        articleVo.setCategory(categoryService.findCategoryById(article.getCategoryId()));
+
+        LambdaQueryWrapper<ArticleBody> articleBodyQueryWrapper = new LambdaQueryWrapper<>();
+        articleBodyQueryWrapper.select(
+                ArticleBody::getId,
+                ArticleBody::getContent,
+                ArticleBody::getContentHtml,
+                ArticleBody::getArticleId).eq(ArticleBody::getArticleId, id);
+        ArticleBody articleBody = articleBodyMapper.selectOne(articleBodyQueryWrapper);
+        ArticleBodyVo articleBodyVo = new ArticleBodyVo();
+        articleBodyVo.setContent(articleBody.getContent());
+        articleVo.setBody(articleBodyVo);
         return articleVo;
     }
+
 
     /**
      * 用pao对象组装返回给前端的articleVo数据，大部分来源于查询 article ，但仍然要手动处理createDate、author、ArticleBod
@@ -112,7 +130,7 @@ class ArticleServiceImpl implements ArticleService {
         articleVo.setTags(tagService.getTagsByArticleId(article.getId()));
         articleVo.setAuthor(sysUserService
                 .getUserById(article.getAuthorId())
-                .orElseGet(()->{
+                .orElseGet(() -> {
                     SysUser defaultSysUser = new SysUser();
                     defaultSysUser.setNickname("未知用户");
                     return defaultSysUser;
