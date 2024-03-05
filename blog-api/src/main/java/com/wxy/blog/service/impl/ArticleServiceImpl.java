@@ -6,6 +6,7 @@ import com.wxy.blog.dao.mapper.ArticleMapper;
 import com.wxy.blog.dao.pojo.Article;
 import com.wxy.blog.dao.pojo.SysUser;
 import com.wxy.blog.service.ArticleService;
+import com.wxy.blog.service.CategoryService;
 import com.wxy.blog.service.SysUserService;
 import com.wxy.blog.service.TagService;
 import com.wxy.blog.vo.ArticleVo;
@@ -29,6 +30,10 @@ class ArticleServiceImpl implements ArticleService {
 
     @Autowired
     private SysUserService sysUserService;
+
+    @Autowired
+    private CategoryService categoryService;
+
     @Override
     public List<ArticleVo> listArticle(PageParams pageParams) {
 
@@ -59,7 +64,7 @@ class ArticleServiceImpl implements ArticleService {
     }
 
     @Override
-    public List<ArticleVo> listNewArticle(int limit) {
+    public List<ArticleTitleVo> listNewArticle(int limit) {
         LambdaQueryWrapper<Article> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper
                 .select(Article::getId,Article::getTitle)
@@ -67,6 +72,30 @@ class ArticleServiceImpl implements ArticleService {
                 .last("LIMIT " + limit);
         List<Article> articles = articleMapper.selectList(queryWrapper);
         return articles.stream().map(this::makeArticleVo).collect(Collectors.toList());
+    }
+
+    @Override
+    public ArticleVo findArticleById(Long id) {
+        ArticleVo articleVo = new ArticleVo();
+        LambdaQueryWrapper<Article> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper
+                .select(
+                        Article::getId,
+                        Article::getTitle,
+                        Article::getSummary,
+                        Article::getCommentCounts,
+                        Article::getViewCounts,
+                        Article::getWeight,
+                        Article::getCreateDate,
+                        Article::getAuthorId,
+                        Article::getCategoryId
+                ).eq(Article::getId,id);
+        Article artical = articleMapper.selectOne(queryWrapper);
+        BeanUtils.copyProperties(artical,articleVo);
+        articleVo.setAuthor(sysUserService.getUserById(artical.getAuthorId()).map(SysUser::getNickname).orElse(""));
+        articleVo.setTags(tagService.getTagsByArticleId(id));
+        articleVo.setCategory(categoryService.findCategoryById(artical.getCategoryId()));
+        return articleVo;
     }
 
     /**

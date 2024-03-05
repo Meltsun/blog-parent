@@ -16,6 +16,8 @@ public interface ArticleService {
 
     List<ArticleTitleVo> listHotArticle(int limit);
 
-    List<ArticleVo> listNewArticle(int limit);
+    List<ArticleTitleVo> listNewArticle(int limit);
+
+    ArticleVo findArticleById(Long id);
 }
 

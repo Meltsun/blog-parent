@@ -6,10 +6,7 @@ import com.wxy.blog.service.ArticleService;
 import com.wxy.blog.vo.ArticleVo;
 import com.wxy.blog.vo.ArticleTitleVo;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import com.wxy.blog.vo.Result;
 import com.wxy.blog.vo.params.PageParams;
 
@@ -51,7 +48,15 @@ public class ArticleController {
     @PostMapping("new")
     public Result newArticle(){
         int limit = 5;
-        List<ArticleVo> articles = articleService.listNewArticle(limit);
+        List<ArticleTitleVo> articles = articleService.listNewArticle(limit);
         return Result.success(articles);
     }
+
+    @PostMapping("view{id}")
+    public Result findArticleById(@PathVariable("id") Long id) {
+        ArticleVo articleVo = articleService.findArticleById(id);
+
+        return Result.success(articleVo);
+    }
+
 }

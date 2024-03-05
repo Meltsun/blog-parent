@@ -1,9 +1,7 @@
 package com.wxy.blog.util;
 
 import com.wxy.blog.dao.pojo.SysUser;
-import org.springframework.context.annotation.Bean;
 
-import javax.swing.text.html.Option;
 import java.util.Optional;
 
 
