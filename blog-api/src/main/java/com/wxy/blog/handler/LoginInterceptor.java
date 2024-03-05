@@ -26,11 +26,13 @@ public class LoginInterceptor implements HandlerInterceptor {
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler)
             throws Exception {
+        //排除静态资源服务器
         if(! (handler instanceof HandlerMethod)) {
             return true;
         }
-        String token = request.getHeader("Authorization");
+        Optional<String> token = Optional.ofNullable(request.getHeader("Authorization"));
 
+        //日志
         log.info("=================request start===========================");
         String requestURI = request.getRequestURI();
         log.info("request uri:{}",requestURI);
@@ -38,17 +40,13 @@ public class LoginInterceptor implements HandlerInterceptor {
         log.info("token:{}", token);
         log.info("=================request end===========================");
 
-        //springboot提供了静态资源服务器，排除掉；只需要拦截handler
-        if (token == null){
-            handleResponse(Result.fail(ErrorCode.NO_LOGIN),response);
-            return false;
-        }
-        Optional<SysUser> sysUser = loginService.checkUserToken(token);
+        Optional<SysUser> sysUser = token.flatMap(loginService::checkUserToken);
+
         if(!sysUser.isPresent()){
             handleResponse(Result.fail(ErrorCode.NO_LOGIN),response);
             return false;
         }
-        sysUser.ifPresent(UserThreadLocal::put);
+        sysUser.ifPresent(UserThreadLocal::set);
         return true;
     }
 

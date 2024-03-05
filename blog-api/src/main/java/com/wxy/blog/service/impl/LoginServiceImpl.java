@@ -6,6 +6,7 @@ import com.wxy.blog.service.LoginService;
 import com.wxy.blog.service.SysUserService;
 import com.wxy.blog.service.exception.ServiceException;
 import com.wxy.blog.util.JWTUtils;
+import com.wxy.blog.util.UserThreadLocal;
 import com.wxy.blog.vo.ErrorCode;
 import com.wxy.blog.vo.params.LoginParams;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,6 +42,17 @@ public class LoginServiceImpl implements LoginService {
     }
     @Override
     public Optional<SysUser> checkUserToken(String token){
+        SysUser sysUser;
+        if (JWTUtils.checkToken(token).isPresent()){
+            sysUser= UserThreadLocal.get().orElse(getUserFromRedis(token).orElse(null));
+        }
+        else {
+            sysUser = null;
+        }
+        return Optional.ofNullable(sysUser);
+    }
+
+    private Optional<SysUser> getUserFromRedis(String token){
         String userJson = redisTemplate.opsForValue().get("TOKEN_"+token);
         return Optional.ofNullable(userJson).filter(x->!x.isEmpty()).map(x -> JSON.parseObject(x, SysUser.class));
     }
