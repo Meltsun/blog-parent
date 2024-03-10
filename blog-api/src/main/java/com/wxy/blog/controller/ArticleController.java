@@ -27,7 +27,7 @@ public class ArticleController {
      */
     @PostMapping
     public Result listArticle(@RequestBody PageParams pageParams){
-        List<ArticleVo> articles = articleService.listArticle(pageParams);
+        List<ArticleTitleVo> articles = articleService.listArticle(pageParams);
 
         return Result.success(articles);
     }
@@ -52,11 +52,9 @@ public class ArticleController {
         return Result.success(articles);
     }
 
-    @PostMapping("view{id}")
+    @PostMapping("view/{id}")
     public Result findArticleById(@PathVariable("id") Long id) {
-        ArticleVo articleVo = articleService.findArticleById(id);
-
+        ArticleVo articleVo = articleService.viewArticleById(id);
         return Result.success(articleVo);
     }
-
 }

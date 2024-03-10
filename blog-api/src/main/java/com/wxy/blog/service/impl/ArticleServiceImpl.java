@@ -18,6 +18,9 @@ import com.wxy.blog.vo.params.PageParams;
 import org.joda.time.DateTime;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Async;
+import org.springframework.scheduling.annotation.EnableAsync;
+import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -41,7 +44,7 @@ class ArticleServiceImpl implements ArticleService {
     private ArticleBodyMapper articleBodyMapper;
 
     @Override
-    public List<ArticleVo> listArticle(PageParams pageParams) {
+    public List<ArticleTitleVo> listArticle(PageParams pageParams) {
 
         Page<Article> page = new Page<>(pageParams.getPage(), pageParams.getPageSize());
 
@@ -61,12 +64,14 @@ class ArticleServiceImpl implements ArticleService {
                 .orderByDesc(Article::getViewCounts)
                 .last("LIMIT " + limit);
         List<Article> articles = articleMapper.selectList(queryWrapper);
-        return articles.stream().map((fullArticle -> {
-            ArticleTitleVo article = new ArticleTitleVo();
-            article.setId(fullArticle.getId());
-            article.setTitle(fullArticle.getTitle());
-            return article;
-        })).collect(Collectors.toList());
+        return articles
+                .stream()
+                .map(x->{
+                    ArticleTitleVo articleTitleVo = new ArticleTitleVo();
+                    BeanUtils.copyProperties(x,articleTitleVo);
+                    return articleTitleVo;
+                })
+                .collect(Collectors.toList());
     }
 
     @Override
@@ -77,51 +82,32 @@ class ArticleServiceImpl implements ArticleService {
                 .orderByDesc(Article::getCreateDate)
                 .last("LIMIT " + limit);
         List<Article> articles = articleMapper.selectList(queryWrapper);
-        return articles.stream().map(this::makeArticleVo).collect(Collectors.toList());
+        return articles
+                .stream()
+                .map(x->{
+                    ArticleTitleVo articleTitleVo = new ArticleTitleVo();
+                    BeanUtils.copyProperties(x,articleTitleVo);
+                    return articleTitleVo;
+                })
+                .collect(Collectors.toList());
     }
 
     @Override
-    public ArticleVo findArticleById(Long id) {
-        ArticleVo articleVo = new ArticleVo();
-        LambdaQueryWrapper<Article> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper
-                .select(
-                        Article::getId,
-                        Article::getTitle,
-                        Article::getSummary,
-                        Article::getCommentCounts,
-                        Article::getViewCounts,
-                        Article::getWeight,
-                        Article::getCreateDate,
-                        Article::getAuthorId,
-                        Article::getCategoryId
-                ).eq(Article::getId, id);
-        Article article = articleMapper.selectOne(queryWrapper);
-        BeanUtils.copyProperties(article, articleVo);
-        articleVo.setAuthor(sysUserService.getUserById(article.getAuthorId()).map(SysUser::getNickname).orElse(""));
-        articleVo.setTags(tagService.getTagsByArticleId(id));
-        articleVo.setCategory(categoryService.findCategoryById(article.getCategoryId()));
-
-        LambdaQueryWrapper<ArticleBody> articleBodyQueryWrapper = new LambdaQueryWrapper<>();
-        articleBodyQueryWrapper.select(
-                ArticleBody::getId,
-                ArticleBody::getContent,
-                ArticleBody::getContentHtml,
-                ArticleBody::getArticleId).eq(ArticleBody::getArticleId, id);
-        ArticleBody articleBody = articleBodyMapper.selectOne(articleBodyQueryWrapper);
-        ArticleBodyVo articleBodyVo = new ArticleBodyVo();
-        articleBodyVo.setContent(articleBody.getContent());
-        articleVo.setBody(articleBodyVo);
-        return articleVo;
+    public ArticleVo viewArticleById(Long id) {
+        Article article = articleMapper.selectById(id);
+        asyncArticleService.updateViewCount(article);
+        return makeArticleVo(article);
     }
 
+    @Autowired
+    private AsyncArticleService asyncArticleService;
 
     /**
-     * 用pao对象组装返回给前端的articleVo数据，大部分来源于查询 article ，但仍然要手动处理createDate、author、ArticleBod
+     * 为article添加createDate,tags,author,body
      * private List<TagVo> tags;
      *
-     * @param article article
-     * @return articleVo
+     * @param article 完整的article
+     * @return 添加了article中没有的属性的articleVo
      */
     private ArticleVo makeArticleVo(Article article) {
         ArticleVo articleVo = new ArticleVo();
@@ -136,8 +122,44 @@ class ArticleServiceImpl implements ArticleService {
                     return defaultSysUser;
                 })
                 .getNickname());
+        articleVo.setBody(getBodyById(article.getBodyId()));
+        articleVo.setCategory(categoryService.findCategoryById(article.getCategoryId()));
         return articleVo;
     }
 
+    private ArticleBodyVo getBodyById(Long id){
+        LambdaQueryWrapper<ArticleBody> articleBodyQueryWrapper = new LambdaQueryWrapper<>();
+        articleBodyQueryWrapper.select(
+                ArticleBody::getId,
+                ArticleBody::getContent,
+                ArticleBody::getContentHtml,
+                ArticleBody::getArticleId).eq(ArticleBody::getId, id);
+        ArticleBody articleBody = articleBodyMapper.selectOne(articleBodyQueryWrapper);
+        ArticleBodyVo articleBodyVo = new ArticleBodyVo();
+        articleBodyVo.setContent(articleBody.getContent());
+        return articleBodyVo;
+    }
+}
 
+@EnableAsync
+@Component
+class AsyncArticleService {
+    @Autowired
+    private ArticleMapper articleMapper;
+
+    @Async("taskExecutor")
+    protected void updateViewCount(Article article){
+        try {
+            //睡眠5秒 证明不会影响主线程的使用
+            Thread.sleep(5000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        Article articleUpdate = new Article();
+        articleUpdate.setViewCounts(article.getViewCounts() + 1);
+        LambdaQueryWrapper<Article> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(Article::getId,article.getId());
+        queryWrapper.eq(Article::getViewCounts,article.getViewCounts());//?
+        articleMapper.update(articleUpdate,queryWrapper);
+    }
 }

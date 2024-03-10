@@ -37,7 +37,6 @@ public class Article {
      */
     private int weight = Article_Common;
 
-
     /**
      * 创建时间
      */
